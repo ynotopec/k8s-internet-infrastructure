@@ -6,18 +6,18 @@ Bonjour Antonio ! Voici deux schémas “state-of-the-art” pour exposer un clu
 
 ```mermaid
 flowchart LR
-    A[Internet / Clients\nBrowsers • Mobile • API] --> B[DNS Anycast]
-    B --> C[CDN / WAF / DDoS\nCloudflare / Akamai]
-    C --> D[Edge LB L7/L4\nGlobal ou Régional]
-    D --> E[Firewall / SecGroups]
-    E --> F[Public VIP / LB\nCloud LB ou MetalLB/BGP]
-    F --> G[Workers Edge durcis\nAutoscale, no SSH]
-    G --> H[Ingress / Gateway\nNginx / Envoy / Istio GW]
-    H --> I[TLS termination / mTLS\ncert-manager + ACME]
-    I --> J[Service Mesh\nPolicies, mTLS, Rate limit]
-    J --> K[Services (ClusterIP)]
-    K --> L[Apps / Microservices\nDeployments / HPAs]
-    K --> M[Internal APIs / DBs\nPrivate Endpoints / VPC]
+    A["Internet / Clients<br/>Browsers &bull; Mobile &bull; API"] --> B["DNS Anycast"]
+    B --> C["CDN / WAF / DDoS<br/>Cloudflare / Akamai"]
+    C --> D["Edge LB L7/L4<br/>Global ou Régional"]
+    D --> E["Firewall / SecGroups"]
+    E --> F["Public VIP / LB<br/>Cloud LB ou MetalLB/BGP"]
+    F --> G["Workers Edge durcis<br/>Autoscale, no SSH"]
+    G --> H["Ingress / Gateway<br/>Nginx / Envoy / Istio GW"]
+    H --> I["TLS termination / mTLS<br/>cert-manager + ACME"]
+    I --> J["Service Mesh<br/>Policies, mTLS, Rate limit"]
+    J --> K["Services (ClusterIP)"]
+    K --> L["Apps / Microservices<br/>Deployments / HPAs"]
+    K --> M["Internal APIs / DBs<br/>Private Endpoints / VPC"]
 ```
 
 **Notes clés**
@@ -32,19 +32,19 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-    ext[Client HTTPS] --> gw[Gateway]
-    gw --> rt[HTTPRoute\nHost / Path / Headers]
-    rt --> waf[WAF / Rate limiting\nExtAuthZ / WASM]
-    waf --> auth[OIDC / OAuth2\nForwardAuth / ExtAuthZ]
-    auth --> svc[SVC app-frontend (ClusterIP)]
-    svc --> pod1[(Pod v1)]
-    svc --> pod2[(Pod v2)]
+    ext["Client HTTPS"] --> gw["Gateway"]
+    gw --> rt["HTTPRoute<br/>Host / Path / Headers"]
+    rt --> waf["WAF / Rate limiting<br/>ExtAuthZ / WASM"]
+    waf --> auth["OIDC / OAuth2<br/>ForwardAuth / ExtAuthZ"]
+    auth --> svc["SVC app-frontend (ClusterIP)"]
+    svc --> pod1["Pod v1"]
+    svc --> pod2["Pod v2"]
 
     subgraph Security_and_Ops
-      cm[cert-manager\nACME / LE / mTLS]
-      np[NetworkPolicies]
-      ps[PodSecurity / OPA\nKyverno | Gatekeeper]
-      obs[Observability\nOTel / Prometheus / Grafana]
+      cm["cert-manager<br/>ACME / LE / mTLS"]
+      np["NetworkPolicies"]
+      ps["PodSecurity / OPA<br/>Kyverno / Gatekeeper"]
+      obs["Observability<br/>OTel / Prometheus / Grafana"]
     end
 
     cm --- gw
