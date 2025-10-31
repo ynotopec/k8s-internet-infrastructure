@@ -4,6 +4,7 @@ Bonjour Antonio ! Voici deux schémas “state-of-the-art” pour exposer un clu
 
 # Vue d’ensemble (Edge → Cluster)
 
+```mermaid
 flowchart LR
     A[Internet / Clients\nBrowsers • Mobile • API] --> B[DNS Anycast]
     B --> C[CDN / WAF / DDoS\nCloudflare / Akamai]
@@ -17,6 +18,7 @@ flowchart LR
     J --> K[Services (ClusterIP)]
     K --> L[Apps / Microservices\nDeployments / HPAs]
     K --> M[Internal APIs / DBs\nPrivate Endpoints / VPC]
+```
 
 **Notes clés**
 
@@ -28,6 +30,7 @@ flowchart LR
 
 # Flux L7 intra-cluster (Gateway API “state-of-the-art”)
 
+```mermaid
 flowchart TB
     ext[Client HTTPS] --> gw[Gateway]
     gw --> rt[HTTPRoute\nHost / Path / Headers]
@@ -48,6 +51,7 @@ flowchart TB
     np --- svc
     ps --- pod1
     obs --- gw
+```
 
 **Bonnes pratiques rapides**
 
