@@ -1,0 +1,36 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: edge
+spec:
+  controllerName: example.com/gateway-operator
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: edge
+  namespace: edge-gateway
+  labels:
+    app: edge-gateway
+spec:
+  gatewayClassName: edge
+  listeners:
+    - name: https
+      hostname: "example.com"
+      port: 443
+      protocol: HTTPS
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: wildcard-example-com
+      allowedRoutes:
+        namespaces:
+          from: Same
+    - name: http-redirect
+      port: 80
+      protocol: HTTP
+      hostname: "example.com"
+      allowedRoutes:
+        namespaces:
+          from: Same

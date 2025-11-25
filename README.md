@@ -1,8 +1,10 @@
-diagram of the art for k8s exposed to Internet
+# Exposition d’un cluster Kubernetes sur Internet
 
-Bonjour Antonio ! Voici deux schémas “state-of-the-art” pour exposer un cluster Kubernetes sur Internet.
+Ce repo rassemble des schémas de référence **et** des manifestes prêts à l’emploi pour sécuriser l’exposition d’un cluster Kubernetes. Il couvre un chemin complet : DNS/Anycast → CDN/WAF → LB → Gateway API → cert-manager → mesh/NetPolicies, avec une variante bare-metal (MetalLB + BGP).
 
-# Vue d’ensemble (Edge → Cluster)
+## Schémas d’architecture
+
+### Vue d’ensemble (Edge → Cluster)
 
 ```mermaid
 flowchart LR
@@ -20,15 +22,7 @@ flowchart LR
     K --> M["Internal APIs / DBs<br/>Private Endpoints / VPC"]
 ```
 
-**Notes clés**
-
-* DNS géré + CDN/WAF/DDoS en amont (cache, filtrage, bot mgmt).
-* LB public → nœuds workers “edge” durcis (no SSH, PSP/PSa, SecComp).
-* Ingress **ou** Gateway API comme point d’entrée L7, certs via **cert-manager**.
-* Mesh (mTLS, authZ, quotas) + **NetworkPolicies** (CNI: Cilium/Calico).
-* Accès données via endpoints privés (pas d’expo DB publique).
-
-# Flux L7 intra-cluster (Gateway API “state-of-the-art”)
+### Flux L7 intra-cluster (Gateway API)
 
 ```mermaid
 flowchart TB
@@ -44,7 +38,7 @@ flowchart TB
       cm["cert-manager<br/>ACME / LE / mTLS"]
       np["NetworkPolicies"]
       ps["PodSecurity / OPA<br/>Kyverno / Gatekeeper"]
-      obs["Observability<br/>OTel / Prometheus / Grafana"]
+      obs["Observabilité<br/>OTel / Prometheus / Grafana"]
     end
 
     cm --- gw
@@ -53,14 +47,60 @@ flowchart TB
     obs --- gw
 ```
 
-**Bonnes pratiques rapides**
+## Manifests fournis
 
-* **Gateway API** (Routes canari/blue-green, headers, weight).
-* **ExtAuthZ** (Keycloak/IdP) au gateway, pas dans chaque app.
-* **Ratelimiting** & **WAF** au bord (plugin/sidecar/EnvoyFilter).
-* **mTLS partout** (mesh) + **HSTS/OCSP Stapling** côté edge.
-* **ExternalDNS** pour auto-provision DNS, **cert-manager** pour TLS.
-* **Cilium** (eBPF) pour NetPolicies/L7 policies + **Hubble** (visibilité).
-* **Secrets** via KMS/CSI, **readOnlyRootFS**, **seccomp**, **runAsNonRoot**.
+```
+manifests/
+├── baseline/
+│   ├── 00-namespaces.yaml         # Namespaces dédiés (gateway, cert-manager, external-dns)
+│   ├── gateway/                   # GatewayClass/Gateway + HTTPRoute canari
+│   ├── cert-manager/              # ClusterIssuer ACME + certificat wildcard
+│   └── external-dns/              # Déploiement ExternalDNS compatible Gateway API
+└── bare-metal/
+    └── metallb/                   # Pool IP + L2/BGP pour exposition bare-metal
+```
 
-Si tu veux, je peux te générer les manifests “baseline” (Gateway, HTTPRoute, cert-manager, ExternalDNS) et une variante bare-metal (MetalLB + BGP).
+### Gateway API (baseline)
+* **GatewayClass + Gateway** pour un listener HTTPS + redirection HTTP→HTTPS.
+* **HTTPRoute** avec réécriture d’URL, headers additionnels et traffic splitting (90/10) pour les déploiements blue/green ou canari.
+
+### cert-manager
+* **ClusterIssuer ACME** (Cloudflare DNS01) prêt à l’emploi.
+* **Certificate wildcard** pour `example.com` et `*.example.com` utilisé par le Gateway.
+
+### ExternalDNS
+* RBAC minimal pour récupérer services/ingresses/HTTPRoutes.
+* Déploiement configuré pour Cloudflare avec `--registry=txt` et `--txt-owner-id=edge-gateway`.
+
+### Variante bare-metal (MetalLB)
+* **IPAddressPool + L2Advertisement** pour annoncer un bloc IP public.
+* **BGPPeer + BGPAdvertisement** pour intégrer un routeur edge (ASN privés d’exemple).
+
+## Comment utiliser
+
+1. **Pré-requis** : cluster >= 1.28 avec CRDs Gateway API, cert-manager et MetalLB (si bare-metal) déjà installés.
+2. Adaptez les valeurs `example.com`, les adresses IP et les secrets (`cloudflare-api-token`, `metallb-bgp-password`).
+3. Appliquez les namespaces et la Gateway baseline :
+
+   ```bash
+   kubectl apply -f manifests/baseline/00-namespaces.yaml
+   kubectl apply -f manifests/baseline/cert-manager/
+   kubectl apply -f manifests/baseline/gateway/
+   kubectl apply -f manifests/baseline/external-dns/
+   ```
+
+4. Pour le bare-metal, configurez MetalLB :
+
+   ```bash
+   kubectl apply -f manifests/bare-metal/metallb/
+   ```
+
+5. Connectez vos services applicatifs : créez un `Service` (ClusterIP) nommé `app-frontend` et, si besoin, `app-frontend-v2` dans le namespace `edge-gateway` pour profiter du traffic-splitting.
+
+## Bonnes pratiques rapides
+
+* CDN/WAF/DDoS en amont + LB public vers nœuds edge durcis (no SSH, SecComp/PSa).
+* Gateway API comme point d’entrée L7 ; cert-manager pour TLS automatisé (ACME/LE ou autre PKI).
+* AuthN/AuthZ centralisées (ExtAuthZ, OIDC) au niveau du gateway ou du mesh.
+* mTLS mesh + **NetworkPolicies** (Cilium/Calico) et observabilité (OTel/Prom/Grafana).
+* Secrets via KMS/CSI, `readOnlyRootFS`, `runAsNonRoot`, `seccompProfile` et quotas.

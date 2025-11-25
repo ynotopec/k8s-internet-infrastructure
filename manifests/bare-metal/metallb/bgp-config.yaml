@@ -1,0 +1,22 @@
+apiVersion: metallb.io/v1beta1
+kind: BGPPeer
+metadata:
+  name: edge-router
+  namespace: metallb-system
+spec:
+  myASN: 64500
+  peerASN: 64512
+  peerAddress: 198.51.100.1
+  passwordSecret:
+    name: metallb-bgp-password
+    key: password
+---
+apiVersion: metallb.io/v1beta1
+kind: BGPAdvertisement
+metadata:
+  name: public-bgp
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+    - public-pool
+  aggregationLength: 32
